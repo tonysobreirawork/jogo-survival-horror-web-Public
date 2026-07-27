@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#030506" />
+    <meta name="description" content="Último Sinal Parte 2 — Frequência Morta." />
+    <title>Último Sinal — Parte 2</title>
+  </head>
+  <body>
+    <div id="app">
+      <div id="part2-game"></div>
+
+      <div id="part2-hud" class="hidden">
+        <section class="p2-panel p2-objective">
+          <span>Objetivo</span>
+          <strong id="p2-objective">Siga a frequência.</strong>
+        </section>
+
+        <section class="p2-panel p2-radio">
+          <span>Rádio portátil</span>
+          <strong id="p2-frequency">87.3 FM</strong>
+          <small id="p2-radio-status">chiado baixo</small>
+        </section>
+
+        <section class="p2-panel p2-progress">
+          <span>Gravações</span>
+          <strong id="p2-recordings">0/3</strong>
+          <small id="p2-status">Procure mensagens de Sydney.</small>
+        </section>
+
+        <div id="p2-message"></div>
+        <div id="p2-prompt"></div>
+        <div id="p2-crosshair"><span></span></div>
+        <div id="p2-danger"></div>
+        <div id="p2-grain"></div>
+      </div>
+
+      <section id="p2-start" class="p2-screen visible">
+        <div class="p2-card">
+          <p class="p2-kicker">Parte 2</p>
+          <h1>FREQUÊNCIA <em>MORTA</em></h1>
+          <p>
+            A foto revelou uma torre de transmissão municipal. No verso surgiu a frase:
+            “Quando as luzes apagarem, siga a frequência 87.3.”
+          </p>
+          <div class="p2-controls">
+            <span><kbd>WASD</kbd> mover</span>
+            <span><kbd>Mouse</kbd> olhar</span>
+            <span><kbd>E</kbd> interagir</span>
+            <span><kbd>F</kbd> lanterna</span>
+            <span><kbd>R</kbd> trocar frequência</span>
+            <span><kbd>Shift</kbd> correr</span>
+          </div>
+          <button id="p2-start-button">Entrar na cidade</button>
+          <a class="p2-link" href="./index.html">Voltar para Parte 1</a>
+        </div>
+      </section>
+
+      <section id="p2-note-screen" class="p2-screen">
+        <div class="p2-card p2-note-card">
+          <p class="p2-kicker">Gravação encontrada</p>
+          <h2 id="p2-note-title"></h2>
+          <p id="p2-note-body"></p>
+          <button id="p2-close-note">Guardar gravação</button>
+        </div>
+      </section>
+
+      <section id="p2-end-screen" class="p2-screen">
+        <div class="p2-card p2-ending">
+          <p class="p2-kicker">Fim da Parte 2</p>
+          <h2 id="p2-end-title"></h2>
+          <p id="p2-end-text"></p>
+          <div id="p2-choice-actions">
+            <button id="p2-restart">Jogar Parte 2 novamente</button>
+            <a class="p2-link" href="./index.html">Voltar para Parte 1</a>
+          </div>
+        </div>
+      </section>
+
+      <div id="p2-loading" class="visible">Sintonizando frequência...</div>
+    </div>
+    <script type="module" src="/src/part2.js"></script>
+  </body>
+</html>

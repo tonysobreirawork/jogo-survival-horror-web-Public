@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#030506" />
+    <meta name="description" content="Último Sinal, um survival horror 3D em primeira pessoa." />
+    <title>Último Sinal 3D</title>
+  </head>
+  <body>
+    <div id="app">
+      <div id="game"></div>
+
+      <div id="hud" class="hidden">
+        <div class="hud-top">
+          <section class="panel objective-panel">
+            <span class="eyebrow">Objetivo</span>
+            <strong id="objective">Encontre as quatro pistas.</strong>
+          </section>
+
+          <section class="panel meters-panel">
+            <div class="meter-row">
+              <span>Lanterna</span>
+              <div class="meter"><i id="battery-bar"></i></div>
+              <b id="battery-value">100</b>
+            </div>
+            <div class="meter-row">
+              <span>Fôlego</span>
+              <div class="meter"><i id="stamina-bar"></i></div>
+              <b id="stamina-value">100</b>
+            </div>
+            <div class="meter-row">
+              <span>Ruído</span>
+              <div class="meter"><i id="noise-bar"></i></div>
+              <b id="noise-value">0</b>
+            </div>
+            <small id="status">Pistas: 0/4</small>
+          </section>
+
+          <section class="panel minimap-panel">
+            <div class="minimap-header">
+              <span class="eyebrow">Mapa</span>
+              <small id="map-hint">Pegue o mapa na recepção</small>
+            </div>
+            <canvas id="minimap" width="210" height="178" aria-label="Mini mapa da escola"></canvas>
+            <small class="minimap-tip">Pressione <kbd>M</kbd> para abrir</small>
+          </section>
+        </div>
+
+        <div id="pursuit-indicator" role="status" aria-live="polite">
+          <span>PERSEGUIÇÃO</span>
+          <div class="pursuit-track"><i id="pursuit-bar"></i></div>
+          <b id="pursuit-status">À VISTA — CORRA</b>
+        </div>
+
+        <div id="message"></div>
+        <div id="prompt"></div>
+        <div id="hidden-state">ESCONDIDO · pressione E para sair</div>
+        <div id="crosshair"><span></span></div>
+        <div id="danger-vignette"></div>
+        <div id="flashlight-vignette"></div>
+        <div id="film-grain"></div>
+      </div>
+
+      <section id="start-screen" class="screen visible">
+        <div class="card title-card clean-start">
+          <p class="kicker">Survival horror em primeira pessoa</p>
+          <h1>ÚLTIMO <em>SINAL</em></h1>
+          <p class="lead compact-lead">
+            Explore a escola, encontre as pistas, religue a energia e escape antes de ser encontrado.
+          </p>
+          <div class="quick-controls" aria-label="Controles principais">
+            <span><kbd>WASD</kbd> mover</span>
+            <span><kbd>Mouse</kbd> olhar</span>
+            <span><kbd>E</kbd> interagir</span>
+            <span><kbd>F</kbd> lanterna</span>
+            <span><kbd>M</kbd> mapa</span>
+          </div>
+          <label class="debug-toggle" for="debug-mode">
+            <input id="debug-mode" type="checkbox" />
+            <span class="debug-switch" aria-hidden="true"></span>
+            <span>
+              <strong>Modo debug</strong>
+              <small>Explorar e testar sem a criatura.</small>
+            </span>
+          </label>
+          <button id="start-button">Jogar</button>
+          <small>Use fones de ouvido.</small>
+        </div>
+      </section>
+
+      <section id="pause-screen" class="screen">
+        <div class="card compact-card">
+          <p class="kicker">O corredor continua lá fora</p>
+          <h2>PAUSADO</h2>
+          <button id="resume-button">Continuar</button>
+        </div>
+      </section>
+
+      <section id="clue-screen" class="screen">
+        <div class="card note-card">
+          <p class="kicker">Documento encontrado</p>
+          <h2 id="clue-title"></h2>
+          <div id="clue-body"></div>
+          <button id="close-clue">Guardar pista</button>
+        </div>
+      </section>
+
+      <section id="map-screen" class="screen">
+        <div class="card map-card">
+          <p class="kicker">Mapa da escola</p>
+          <h2>PLANTA EM PROGRESSO</h2>
+          <div class="map-layout">
+            <canvas id="map-canvas" width="760" height="620" aria-label="Mapa da escola completo"></canvas>
+            <div class="map-side-info">
+              <p>
+                O mapa vai sendo preenchido conforme você explora. Sua posição atual aparece em branco e os pontos de interesse descobertos aparecem destacados.
+              </p>
+              <div id="map-legend" class="map-legend"></div>
+              <div class="map-actions">
+                <button id="close-map">Voltar ao corredor</button>
+                <small>Pressione <kbd>M</kbd> novamente para fechar.</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="end-screen" class="screen">
+        <div class="card compact-card ending-card">
+          <p class="kicker" id="end-kicker">Fim da tentativa</p>
+          <h2 id="end-title"></h2>
+          <img id="end-photo" alt="Foto encontrada" />
+          <p id="end-text"></p>
+          <p id="end-sequel" class="end-sequel"></p>
+          <button id="part2-button" hidden>Continuar para Parte 2</button>
+          <button id="restart-button">Jogar novamente</button>
+        </div>
+      </section>
+
+      <div id="loading" class="visible">Preparando a escola...</div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
