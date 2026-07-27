@@ -49,6 +49,13 @@ const STAIRS_UP_CELL = { x: 13, z: 20 };
 const STAIRS_DOWN_CELL = { x: 20, z: 20 };
 const OPERATIONS_ROOM_CELL = { x: 24, z: 19 };
 const BASEMENT_FLOOR_Y = -2.35;
+const BASEMENT_STAIRS = Object.freeze({
+  startOffsetX: -1.12,
+  run: 3.2,
+  laneHalfWidth: 0.72,
+  architectureHalfWidth: 1.08,
+  steps: 12
+});
 
 const WINDOW_CELLS = [
   { x: 3, z: 0, side: 'north' }, { x: 7, z: 0, side: 'north' },
@@ -535,7 +542,6 @@ class Game {
     this.descentSequenceTimer = 0;
     this.basementFogPlanes = [];
     this.mapState = {
-      unlocked: true,
       discoveredCells: new Set(),
       discoveredPois: new Set(['entrada'])
     };
@@ -559,7 +565,6 @@ class Game {
       stamina: 100,
       noise: 0,
       clues: 0,
-      hasMap: true,
       flashlightOn: true,
       hidden: false,
       hideSpot: null,
@@ -1100,10 +1105,10 @@ class Game {
     return {
       stairCenter,
       walkLaneCenterZ: stairCenter.z,
-      stairStartX: stairCenter.x - 1.05,
-      stairEndX: stairCenter.x + 1.74,
-      stairHalfDepth: 0.5,
-      basementMinX: stairCenter.x + 1.55,
+      stairStartX: stairCenter.x + BASEMENT_STAIRS.startOffsetX,
+      stairEndX: stairCenter.x + BASEMENT_STAIRS.startOffsetX + BASEMENT_STAIRS.run,
+      stairHalfDepth: BASEMENT_STAIRS.laneHalfWidth,
+      basementMinX: stairCenter.x + BASEMENT_STAIRS.startOffsetX + BASEMENT_STAIRS.run - 0.08,
       basementMaxX: roomCenter.x + TILE * 1.45,
       basementMinZ: roomCenter.z - TILE * 1.05,
       basementMaxZ: stairCenter.z + TILE * 0.82
@@ -1118,7 +1123,7 @@ class Game {
       const t = clamp((x - bounds.stairStartX) / (bounds.stairEndX - bounds.stairStartX), 0, 1);
       return THREE.MathUtils.lerp(0, BASEMENT_FLOOR_Y, t);
     }
-    const inThreshold = Math.abs(z - bounds.walkLaneCenterZ) <= 0.62 && x > bounds.stairEndX && x <= bounds.basementMinX + 0.18;
+    const inThreshold = Math.abs(z - bounds.walkLaneCenterZ) <= BASEMENT_STAIRS.laneHalfWidth && x > bounds.stairEndX && x <= bounds.basementMinX + 0.28;
     if (inThreshold) return BASEMENT_FLOOR_Y;
     const insideBasementRoom = x >= bounds.basementMinX && x <= bounds.basementMaxX && z >= bounds.basementMinZ && z <= bounds.basementMaxZ;
     if (insideBasementRoom && this.playerInBasement) {
@@ -1135,13 +1140,13 @@ class Game {
     const bounds = this.getBasementBounds();
     const regionMinX = bounds.stairStartX - 0.45;
     const regionMaxX = bounds.basementMinX + 0.22;
-    const regionMinZ = bounds.walkLaneCenterZ - 1.08;
-    const regionMaxZ = bounds.walkLaneCenterZ + 1.08;
+    const regionMinZ = bounds.walkLaneCenterZ - BASEMENT_STAIRS.architectureHalfWidth;
+    const regionMaxZ = bounds.walkLaneCenterZ + BASEMENT_STAIRS.architectureHalfWidth;
     if (x < regionMinX || x > regionMaxX || z < regionMinZ || z > regionMaxZ) return false;
 
-    const onTopLanding = x < bounds.stairStartX + 0.18 && Math.abs(z - bounds.walkLaneCenterZ) <= 0.62;
-    const onSlope = x >= bounds.stairStartX - 0.02 && x <= bounds.stairEndX + 0.12 && Math.abs(z - bounds.walkLaneCenterZ) <= 0.48;
-    const onLowerThreshold = x > bounds.stairEndX + 0.12 && x <= bounds.basementMinX + 0.18 && Math.abs(z - bounds.walkLaneCenterZ) <= 0.62;
+    const onTopLanding = x < bounds.stairStartX + 0.18 && Math.abs(z - bounds.walkLaneCenterZ) <= BASEMENT_STAIRS.laneHalfWidth;
+    const onSlope = x >= bounds.stairStartX - 0.02 && x <= bounds.stairEndX + 0.12 && Math.abs(z - bounds.walkLaneCenterZ) <= BASEMENT_STAIRS.laneHalfWidth;
+    const onLowerThreshold = x > bounds.stairEndX + 0.12 && x <= bounds.basementMinX + 0.28 && Math.abs(z - bounds.walkLaneCenterZ) <= BASEMENT_STAIRS.laneHalfWidth;
     const inBasementRoom = x >= bounds.basementMinX && x <= bounds.basementMaxX && z >= bounds.basementMinZ && z <= bounds.basementMaxZ;
 
     if (onTopLanding || onSlope || onLowerThreshold || inBasementRoom) return false;
@@ -1152,32 +1157,27 @@ class Game {
     const bounds = this.getBasementBounds();
     const onStairX = this.camera.position.x >= bounds.stairStartX - 0.18 && this.camera.position.x <= bounds.basementMinX + 0.04;
     if (!onStairX) return;
-    if (Math.abs(this.camera.position.z - bounds.walkLaneCenterZ) <= 0.82) {
-      this.camera.position.z = clamp(this.camera.position.z, bounds.walkLaneCenterZ - 0.3, bounds.walkLaneCenterZ + 0.3);
+    if (Math.abs(this.camera.position.z - bounds.walkLaneCenterZ) <= BASEMENT_STAIRS.architectureHalfWidth) {
+      const safeHalfWidth = BASEMENT_STAIRS.laneHalfWidth - PLAYER_RADIUS - 0.06;
+      this.camera.position.z = clamp(this.camera.position.z, bounds.walkLaneCenterZ - safeHalfWidth, bounds.walkLaneCenterZ + safeHalfWidth);
     }
   }
 
   createWalkableBasementStairs() {
     const group = new THREE.Group();
     const concrete = new THREE.MeshStandardMaterial({ color: 0x737a7f, roughness: 0.94, metalness: 0.02 });
-    const wallMaterial = new THREE.MeshStandardMaterial({ color: 0xb5bcc0, roughness: 0.84, metalness: 0.02 });
-    const trimMaterial = new THREE.MeshStandardMaterial({ color: 0x4d565b, roughness: 0.7, metalness: 0.18 });
     const railMaterial = new THREE.MeshStandardMaterial({ color: 0x21292d, roughness: 0.42, metalness: 0.62 });
     const stripeMaterial = new THREE.MeshStandardMaterial({ color: 0xd7bc56, roughness: 0.6, metalness: 0.08 });
 
-    const stairWidth = 1.78;
-    const sideWallThickness = 0.1;
+    const stairWidth = BASEMENT_STAIRS.laneHalfWidth * 2 + PLAYER_RADIUS * 2 + 0.18;
     const topLandingDepth = 1.08;
     const bottomLandingDepth = 1.02;
-    const stepCount = 9;
-    const treadDepth = 0.31;
-    const stepThickness = 0.1;
-    const totalRun = stepCount * treadDepth;
-    const startX = -1.05;
+    const stepCount = BASEMENT_STAIRS.steps;
+    const treadDepth = BASEMENT_STAIRS.run / stepCount;
+    const totalRun = BASEMENT_STAIRS.run;
+    const startX = BASEMENT_STAIRS.startOffsetX;
     const endX = startX + totalRun;
-    const stepDrop = Math.abs(BASEMENT_FLOOR_Y) / stepCount;
-    const wallHeight = 1.04;
-    const sideOffset = stairWidth * 0.5 + sideWallThickness * 0.5 + 0.04;
+    const sideOffset = stairWidth * 0.5 - 0.13;
 
     const topLanding = new THREE.Mesh(new THREE.BoxGeometry(topLandingDepth, 0.12, stairWidth + 0.18), concrete);
     topLanding.position.set(startX - topLandingDepth * 0.5 + 0.08, -0.06, 0);
@@ -1185,14 +1185,18 @@ class Game {
     group.add(topLanding);
 
     for (let i = 0; i < stepCount; i += 1) {
-      const step = new THREE.Mesh(new THREE.BoxGeometry(treadDepth, stepThickness, stairWidth), concrete);
-      step.position.set(startX + i * treadDepth + treadDepth * 0.5, -(i + 0.5) * stepDrop, 0);
+      // Each tread is a solid block down to the basement slab. This removes the
+      // hollow/floating polygons that were visible between steps.
+      const surfaceY = -(i / stepCount) * Math.abs(BASEMENT_FLOOR_Y);
+      const blockHeight = surfaceY - BASEMENT_FLOOR_Y;
+      const step = new THREE.Mesh(new THREE.BoxGeometry(treadDepth + 0.012, blockHeight, stairWidth), concrete);
+      step.position.set(startX + i * treadDepth + treadDepth * 0.5, BASEMENT_FLOOR_Y + blockHeight * 0.5, 0);
       step.castShadow = true;
       step.receiveShadow = true;
       group.add(step);
 
       const edge = new THREE.Mesh(new THREE.BoxGeometry(treadDepth - 0.03, 0.02, 0.05), stripeMaterial);
-      edge.position.set(0, stepThickness * 0.5 - 0.008, -stairWidth * 0.5 + 0.03);
+      edge.position.set(0, blockHeight * 0.5 + 0.011, -stairWidth * 0.5 + 0.03);
       step.add(edge);
     }
 
@@ -1201,24 +1205,7 @@ class Game {
     bottomLanding.receiveShadow = true;
     group.add(bottomLanding);
 
-    const leftWall = new THREE.Mesh(new THREE.BoxGeometry(totalRun + topLandingDepth + bottomLandingDepth + 0.18, wallHeight, sideWallThickness), wallMaterial);
-    leftWall.position.set((startX + endX) * 0.5 + 0.04, 0.46, -sideOffset);
-    leftWall.castShadow = true;
-    leftWall.receiveShadow = true;
-    group.add(leftWall);
-
-    const rightWall = leftWall.clone();
-    rightWall.position.z = sideOffset;
-    group.add(rightWall);
-
-    const leftTrim = new THREE.Mesh(new THREE.BoxGeometry(totalRun + topLandingDepth + bottomLandingDepth + 0.16, 0.08, 0.05), trimMaterial);
-    leftTrim.position.set((startX + endX) * 0.5 + 0.04, 0.04, -sideOffset + 0.03);
-    group.add(leftTrim);
-    const rightTrim = leftTrim.clone();
-    rightTrim.position.z = sideOffset - 0.03;
-    group.add(rightTrim);
-
-    [-0.62, 0.62].forEach((railZ) => {
+    [-sideOffset, sideOffset].forEach((railZ) => {
       const postTop = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.88, 10), railMaterial);
       postTop.position.set(startX - 0.18, 0.42, railZ);
       group.add(postTop);
@@ -1234,9 +1221,9 @@ class Game {
       group.add(rail);
     });
 
-    const beam = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.16, stairWidth + 0.16), trimMaterial);
-    beam.position.set(startX - 0.02, 0.04, 0);
-    group.add(beam);
+    const entryMark = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.018, stairWidth - 0.12), stripeMaterial);
+    entryMark.position.set(startX + 0.04, 0.012, 0);
+    group.add(entryMark);
 
     group.userData.antiBlockKeep = true;
     group.userData.layoutRole = 'stairs-down-walkable';
@@ -1850,82 +1837,6 @@ class Game {
     this.raycastTargets.push(interaction);
     this.activeBatteries.push(interaction);
     this.animatedObjects.push({ object: group, type: 'rotate', phase: index, baseY: group.position.y, amplitude: 0 });
-  }
-
-  createMapPaperTexture() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 420;
-    canvas.height = 300;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#e1d4ae';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = 'rgba(68, 62, 44, 0.9)';
-    ctx.lineWidth = 5;
-    ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
-    ctx.fillStyle = '#473b2a';
-    ctx.font = '700 28px Georgia';
-    ctx.fillText('PLANTA DA ESCOLA', 24, 42);
-    ctx.font = '18px Georgia';
-    ctx.fillText('Recepção • salas • saída norte', 24, 68);
-    ctx.strokeStyle = 'rgba(67, 78, 88, 0.75)';
-    ctx.lineWidth = 4;
-    ctx.strokeRect(36, 92, 348, 166);
-    ctx.strokeRect(64, 120, 70, 42);
-    ctx.strokeRect(164, 120, 94, 42);
-    ctx.strokeRect(288, 120, 68, 42);
-    ctx.beginPath();
-    ctx.moveTo(36, 182); ctx.lineTo(384, 182);
-    ctx.moveTo(142, 92); ctx.lineTo(142, 258);
-    ctx.moveTo(266, 92); ctx.lineTo(266, 258);
-    ctx.stroke();
-    ctx.fillStyle = '#5b6d7a';
-    ctx.fillRect(58, 195, 52, 22);
-    ctx.fillRect(302, 205, 56, 22);
-    ctx.fillStyle = '#6a3f3f';
-    ctx.fillRect(178, 205, 68, 22);
-    ctx.fillStyle = '#3f5d46';
-    ctx.fillRect(212, 94, 32, 16);
-    ctx.fillStyle = '#473b2a';
-    ctx.font = '16px Georgia';
-    ctx.fillText('ENTRADA', 58, 245);
-    ctx.fillText('SALA 13', 176, 245);
-    ctx.fillText('QUADRO', 296, 245);
-    ctx.fillText('SAÍDA', 205, 112);
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    return texture;
-  }
-
-  createEntranceMapTable() {
-    const table = this.createTable();
-    table.userData.antiBlockKeep = true;
-    table.userData.layoutRole = 'map-table';
-    const placed = this.placeAgainstWall(table, 2, 2, 'north', 0.76, 0.03, -0.18);
-    const mapPaper = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.92, 0.66),
-      new THREE.MeshStandardMaterial({ map: this.createMapPaperTexture(), side: THREE.DoubleSide, roughness: 0.92 })
-    );
-    mapPaper.rotation.x = -Math.PI / 2;
-    mapPaper.position.set(0, 0.97, 0.08);
-    mapPaper.castShadow = true;
-    placed.add(mapPaper);
-
-    const note = new THREE.Mesh(
-      new THREE.BoxGeometry(0.18, 0.035, 0.18),
-      new THREE.MeshStandardMaterial({ color: 0x67523d, roughness: 0.88 })
-    );
-    note.position.set(-0.28, 0.96, -0.05);
-    note.rotation.y = 0.36;
-    placed.add(note);
-
-    const interaction = this.createInteractionVolume('schoolMap', 'Pegar mapa da escola', new THREE.Vector3(0, 1.08, 0), new THREE.Vector3(1.8, 1.35, 1.15));
-    interaction.userData.parentGroup = placed;
-    interaction.userData.mapPaper = mapPaper;
-    placed.add(interaction);
-    this.interactables.push(interaction);
-    this.raycastTargets.push(interaction);
-    this.mapPickup = interaction;
-    return placed;
   }
 
   createLocker() {
@@ -3097,7 +3008,6 @@ class Game {
       stamina: 100,
       noise: 0,
       clues: 0,
-      hasMap: true,
       flashlightOn: true,
       hidden: false,
       hideSpot: null,
@@ -3135,15 +3045,8 @@ class Game {
       item.userData.parentGroup.visible = true;
     });
 
-    if (this.mapPickup) {
-      this.mapPickup.userData.active = true;
-      if (this.mapPickup.userData.mapPaper) this.mapPickup.userData.mapPaper.visible = true;
-      if (this.mapPickup.userData.parentGroup) this.mapPickup.userData.parentGroup.visible = true;
-    }
-
     this.playerInBasement = false;
     this.descentSequenceTimer = 0;
-    this.mapState.unlocked = true;
     this.mapState.discoveredCells = new Set();
     this.mapState.discoveredPois = new Set(['entrada']);
     ui.mapScreen.classList.remove('visible');
@@ -3693,7 +3596,6 @@ class Game {
     this.nearInteractable = target;
     if (target?.userData.type === 'breaker') this.markPoiDiscovered('quadro');
     if (target?.userData.type === 'exit') this.markPoiDiscovered('saida');
-    if (target?.userData.type === 'schoolMap') this.markPoiDiscovered('mapa');
     if (target?.userData.type === 'clue') this.markPoiDiscovered(`pista-${target.userData.index + 1}`);
     if (target?.userData.type === 'door') {
       const label = target.userData.doorRef?.userData.targetOpen > 0.5 ? 'Fechar porta' : 'Abrir porta';
@@ -3720,9 +3622,6 @@ class Game {
         break;
       case 'battery':
         this.collectBattery(target);
-        break;
-      case 'schoolMap':
-        this.collectSchoolMap(target);
         break;
       case 'breaker':
         this.useBreaker();
@@ -3775,19 +3674,6 @@ class Game {
     ui.clueTitle.textContent = target.userData.data.title;
     ui.clueBody.textContent = target.userData.data.body;
     ui.clueScreen.classList.add('visible');
-    this.updateObjective();
-    this.renderMap();
-  }
-
-  collectSchoolMap(target) {
-    target.userData.active = false;
-    if (target.userData.mapPaper) target.userData.mapPaper.visible = false;
-    this.player.hasMap = true;
-    this.mapState.unlocked = true;
-    this.discoverMapAroundPlayer();
-    this.markPoiDiscovered('mapa');
-    this.audio.pickup();
-    this.showMessage('Você encontrou o mapa da escola. Pressione M para acompanhar a exploração.', 3.2);
     this.updateObjective();
     this.renderMap();
   }
@@ -4034,11 +3920,11 @@ class Game {
   markPoiDiscovered(id) {
     if (!id || this.mapState.discoveredPois.has(id)) return;
     this.mapState.discoveredPois.add(id);
+    this.mapDirty = true;
     this.renderMap();
   }
 
   discoverMapAroundPlayer(radius = 2) {
-    if (!this.player.hasMap) return;
     const { x: cellX, z: cellZ } = worldToCell(this.camera.position.x, this.camera.position.z);
     for (let dz = -radius; dz <= radius; dz += 1) {
       for (let dx = -radius; dx <= radius; dx += 1) {
@@ -4046,7 +3932,11 @@ class Game {
         const mapZ = cellZ + dz;
         if (mapX < 0 || mapZ < 0 || mapX >= MAP_W || mapZ >= MAP_H) continue;
         if (Math.hypot(dx, dz) > radius + 0.35) continue;
-        this.mapState.discoveredCells.add(`${mapX},${mapZ}`);
+        const key = `${mapX},${mapZ}`;
+        if (!this.mapState.discoveredCells.has(key)) {
+          this.mapState.discoveredCells.add(key);
+          this.mapDirty = true;
+        }
       }
     }
 
@@ -4111,32 +4001,35 @@ class Game {
       ctx.stroke();
     });
 
-    if (this.player.hasMap) {
-      const centerX = originX + playerCell.x * cellSize + cellSize * 0.5;
-      const centerY = originY + playerCell.z * cellSize + cellSize * 0.5;
-      const yaw = this.camera.rotation.y;
-      const size = Math.max(4, cellSize * 0.48);
-      ctx.save();
-      ctx.translate(centerX, centerY);
-      ctx.rotate(-yaw);
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.moveTo(0, -size);
-      ctx.lineTo(size * 0.72, size * 0.9);
-      ctx.lineTo(0, size * 0.45);
-      ctx.lineTo(-size * 0.72, size * 0.9);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
-    }
+    const centerX = originX + playerCell.x * cellSize + cellSize * 0.5;
+    const centerY = originY + playerCell.z * cellSize + cellSize * 0.5;
+    const yaw = this.camera.rotation.y;
+    const size = Math.max(4, cellSize * 0.48);
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(-yaw);
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(0, -size);
+    ctx.lineTo(size * 0.72, size * 0.9);
+    ctx.lineTo(0, size * 0.45);
+    ctx.lineTo(-size * 0.72, size * 0.9);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
   }
 
-  renderMap() {
+  renderMap(force = false) {
     if (!ui.mapHint) return;
+    const playerCell = worldToCell(this.camera.position.x, this.camera.position.z);
+    const cellKey = `${playerCell.x},${playerCell.z}`;
+    if (!force && !this.mapDirty && this.lastRenderedMapCell === cellKey) return;
+    this.lastRenderedMapCell = cellKey;
+    this.mapDirty = false;
     ui.mapHint.textContent = 'Exploração ativa · tecla M';
     this.refreshMapLegend();
     this.drawMapToCanvas(ui.minimap, false);
-    this.drawMapToCanvas(ui.mapCanvas, true);
+    if (this.mapOpen || force) this.drawMapToCanvas(ui.mapCanvas, true);
   }
 
   toggleMapScreen(forceState = null) {
@@ -4145,12 +4038,13 @@ class Game {
     if (shouldOpen) {
       if (ui.clueScreen.classList.contains('visible')) return;
       this.mapOpen = true;
+      this.mapDirty = true;
       this.modalOpen = true;
       this.paused = true;
       this.controls.unlock();
       ui.pauseScreen.classList.remove('visible');
       ui.mapScreen.classList.add('visible');
-      this.renderMap();
+      this.renderMap(true);
       return;
     }
 
@@ -4172,7 +4066,7 @@ class Game {
     ui.staminaValue.textContent = String(Math.round(stamina));
     ui.noiseBar.style.width = `${noise}%`;
     ui.noiseValue.textContent = String(Math.round(noise));
-    ui.status.textContent = `${this.debugMode ? 'DEBUG · SEM INIMIGOS · ' : ''}Pistas: ${this.player.clues}/${CLUES.length} · Reserva: ${this.player.batteryReserves} ${this.player.batteryReserves === 1 ? 'carga' : 'cargas'} · Lanterna ${this.player.flashlightOn ? 'ligada' : 'desligada'} · Mapa ${this.player.hasMap ? 'ativo' : 'indisponível'}${!this.debugMode && this.monster.seenLastFrame ? ' · ELE ESTÁ VENDO VOCÊ' : ''}`;
+    ui.status.textContent = `${this.debugMode ? 'DEBUG · SEM INIMIGOS · ' : ''}Pistas: ${this.player.clues}/${CLUES.length} · Reserva: ${this.player.batteryReserves} ${this.player.batteryReserves === 1 ? 'carga' : 'cargas'} · Lanterna ${this.player.flashlightOn ? 'ligada' : 'desligada'} · Mapa ativo${!this.debugMode && this.monster.seenLastFrame ? ' · ELE ESTÁ VENDO VOCÊ' : ''}`;
     const pursuitVisible = !this.debugMode && this.monster.pursuitActive && (this.monster.state === 'chase' || this.monster.state === 'investigate');
     const pursuitValue = this.monster.seenLastFrame ? 100 : clamp(this.monster.alert, 0, 100);
     ui.pursuit.classList.toggle('visible', pursuitVisible);
@@ -4368,5 +4262,3 @@ function createWindowViewTexture(seed = 1, withEyes = false) {
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
 }
-
-
