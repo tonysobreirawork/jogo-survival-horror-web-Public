@@ -1168,23 +1168,18 @@ class Game {
   createWalkableBasementStairs() {
     const group = new THREE.Group();
     const concrete = new THREE.MeshStandardMaterial({ color: 0x737a7f, roughness: 0.94, metalness: 0.02 });
-    const wallMaterial = new THREE.MeshStandardMaterial({ color: 0xb5bcc0, roughness: 0.84, metalness: 0.02 });
-    const trimMaterial = new THREE.MeshStandardMaterial({ color: 0x4d565b, roughness: 0.7, metalness: 0.18 });
     const railMaterial = new THREE.MeshStandardMaterial({ color: 0x21292d, roughness: 0.42, metalness: 0.62 });
     const stripeMaterial = new THREE.MeshStandardMaterial({ color: 0xd7bc56, roughness: 0.6, metalness: 0.08 });
 
     const stairWidth = BASEMENT_STAIRS.laneHalfWidth * 2 + PLAYER_RADIUS * 2 + 0.18;
-    const sideWallThickness = 0.1;
     const topLandingDepth = 1.08;
     const bottomLandingDepth = 1.02;
     const stepCount = BASEMENT_STAIRS.steps;
     const treadDepth = BASEMENT_STAIRS.run / stepCount;
-    const stepThickness = 0.08;
     const totalRun = BASEMENT_STAIRS.run;
     const startX = BASEMENT_STAIRS.startOffsetX;
     const endX = startX + totalRun;
-    const wallHeight = 1.04;
-    const sideOffset = stairWidth * 0.5 + sideWallThickness * 0.5 + 0.04;
+    const sideOffset = stairWidth * 0.5 - 0.13;
 
     const topLanding = new THREE.Mesh(new THREE.BoxGeometry(topLandingDepth, 0.12, stairWidth + 0.18), concrete);
     topLanding.position.set(startX - topLandingDepth * 0.5 + 0.08, -0.06, 0);
@@ -1192,15 +1187,18 @@ class Game {
     group.add(topLanding);
 
     for (let i = 0; i < stepCount; i += 1) {
-      const step = new THREE.Mesh(new THREE.BoxGeometry(treadDepth, stepThickness, stairWidth), concrete);
-      const surfaceY = -((i + 1) / stepCount) * Math.abs(BASEMENT_FLOOR_Y);
-      step.position.set(startX + i * treadDepth + treadDepth * 0.5, surfaceY - stepThickness * 0.5, 0);
+      // Each tread is a solid block down to the basement slab. This removes the
+      // hollow/floating polygons that were visible between steps.
+      const surfaceY = -(i / stepCount) * Math.abs(BASEMENT_FLOOR_Y);
+      const blockHeight = surfaceY - BASEMENT_FLOOR_Y;
+      const step = new THREE.Mesh(new THREE.BoxGeometry(treadDepth + 0.012, blockHeight, stairWidth), concrete);
+      step.position.set(startX + i * treadDepth + treadDepth * 0.5, BASEMENT_FLOOR_Y + blockHeight * 0.5, 0);
       step.castShadow = true;
       step.receiveShadow = true;
       group.add(step);
 
       const edge = new THREE.Mesh(new THREE.BoxGeometry(treadDepth - 0.03, 0.02, 0.05), stripeMaterial);
-      edge.position.set(0, stepThickness * 0.5 - 0.008, -stairWidth * 0.5 + 0.03);
+      edge.position.set(0, blockHeight * 0.5 + 0.011, -stairWidth * 0.5 + 0.03);
       step.add(edge);
     }
 
@@ -1209,20 +1207,7 @@ class Game {
     bottomLanding.receiveShadow = true;
     group.add(bottomLanding);
 
-    // Segmented side walls follow the descent instead of cutting through the
-    // camera at the lower landing. Their inside faces stay outside the player lane.
-    [-sideOffset, sideOffset].forEach((wallZ) => {
-      for (let i = 0; i < stepCount; i += 1) {
-        const surfaceY = -((i + 1) / stepCount) * Math.abs(BASEMENT_FLOOR_Y);
-        const wall = new THREE.Mesh(new THREE.BoxGeometry(treadDepth + 0.015, wallHeight, sideWallThickness), wallMaterial);
-        wall.position.set(startX + i * treadDepth + treadDepth * 0.5, surfaceY + wallHeight * 0.5, wallZ);
-        wall.castShadow = true;
-        wall.receiveShadow = true;
-        group.add(wall);
-      }
-    });
-
-    [-0.62, 0.62].forEach((railZ) => {
+    [-sideOffset, sideOffset].forEach((railZ) => {
       const postTop = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.88, 10), railMaterial);
       postTop.position.set(startX - 0.18, 0.42, railZ);
       group.add(postTop);
@@ -3140,8 +3125,8 @@ class Game {
     });
 
     if (this.mapPickup) {
-      this.mapPickup.userData.active = true;
-      if (this.mapPickup.userData.mapPaper) this.mapPickup.userData.mapPaper.visible = true;
+      this.mapPickup.userData.active = false;
+      if (this.mapPickup.userData.mapPaper) this.mapPickup.userData.mapPaper.visible = false;
       if (this.mapPickup.userData.parentGroup) this.mapPickup.userData.parentGroup.visible = true;
     }
 

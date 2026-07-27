@@ -36,7 +36,7 @@ A versão de produção será criada na pasta `dist`, contendo tanto a Parte 1 (
 - `Shift`: correr
 - `F`: ligar ou desligar a lanterna
 - `E`: interagir, esconder ou sair do esconderijo
-- `M`: abrir ou fechar o mapa depois de encontrá-lo na recepção
+- `M`: abrir ou fechar o mapa
 - `Esc`: liberar o mouse e pausar
 
 ## Recursos implementados
@@ -55,7 +55,7 @@ A versão de produção será criada na pasta `dist`, contendo tanto a Parte 1 (
 - Objetos apoiados corretamente no piso e itens de parede alinhados às superfícies
 - Ajuste automático da resolução para preservar FPS
 - Geometria instanciada para reduzir draw calls
-- Escada subterrânea com corredor amplo, altura contínua e proteções que acompanham a descida
+- Escada subterrânea sólida, com corredor amplo e transição contínua até a sala de operações
 - Preferência de movimento reduzido e foco de teclado visível nas interfaces
 
 ## Observação sobre Node.js
