@@ -595,7 +595,11 @@ class Part2Game {
     const active = distance < (badFrequency ? 22 : 14) || this.recordings >= 2;
     if (active) {
       const direction = playerFlat.clone().sub(enemy).normalize();
-      enemy.addScaledVector(direction, this.imitator.speed * (badFrequency ? 1.25 : 1) * delta);
+      const distanceToMove = this.imitator.speed * (badFrequency ? 1.25 : 1) * delta;
+      const nextX = enemy.x + direction.x * distanceToMove;
+      const nextZ = enemy.z + direction.z * distanceToMove;
+      if (!this.isBlocked(nextX, enemy.z, 0.34)) enemy.x = nextX;
+      if (!this.isBlocked(enemy.x, nextZ, 0.34)) enemy.z = nextZ;
       this.imitator.group.lookAt(playerFlat.x, 1.2, playerFlat.z);
       this.imitator.alert = clamp(this.imitator.alert + delta * 24, 0, 100);
     } else {
