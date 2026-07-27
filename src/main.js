@@ -49,6 +49,13 @@ const STAIRS_UP_CELL = { x: 13, z: 20 };
 const STAIRS_DOWN_CELL = { x: 20, z: 20 };
 const OPERATIONS_ROOM_CELL = { x: 24, z: 19 };
 const BASEMENT_FLOOR_Y = -2.35;
+const BASEMENT_STAIRS = Object.freeze({
+  startOffsetX: -1.12,
+  run: 3.2,
+  laneHalfWidth: 0.72,
+  architectureHalfWidth: 1.08,
+  steps: 12
+});
 
 const WINDOW_CELLS = [
   { x: 3, z: 0, side: 'north' }, { x: 7, z: 0, side: 'north' },
@@ -535,7 +542,7 @@ class Game {
     this.descentSequenceTimer = 0;
     this.basementFogPlanes = [];
     this.mapState = {
-      unlocked: true,
+      unlocked: false,
       discoveredCells: new Set(),
       discoveredPois: new Set(['entrada'])
     };
@@ -559,7 +566,7 @@ class Game {
       stamina: 100,
       noise: 0,
       clues: 0,
-      hasMap: true,
+      hasMap: false,
       flashlightOn: true,
       hidden: false,
       hideSpot: null,
@@ -1100,10 +1107,10 @@ class Game {
     return {
       stairCenter,
       walkLaneCenterZ: stairCenter.z,
-      stairStartX: stairCenter.x - 1.05,
-      stairEndX: stairCenter.x + 1.74,
-      stairHalfDepth: 0.5,
-      basementMinX: stairCenter.x + 1.55,
+      stairStartX: stairCenter.x + BASEMENT_STAIRS.startOffsetX,
+      stairEndX: stairCenter.x + BASEMENT_STAIRS.startOffsetX + BASEMENT_STAIRS.run,
+      stairHalfDepth: BASEMENT_STAIRS.laneHalfWidth,
+      basementMinX: stairCenter.x + BASEMENT_STAIRS.startOffsetX + BASEMENT_STAIRS.run - 0.08,
       basementMaxX: roomCenter.x + TILE * 1.45,
       basementMinZ: roomCenter.z - TILE * 1.05,
       basementMaxZ: stairCenter.z + TILE * 0.82
@@ -1118,7 +1125,7 @@ class Game {
       const t = clamp((x - bounds.stairStartX) / (bounds.stairEndX - bounds.stairStartX), 0, 1);
       return THREE.MathUtils.lerp(0, BASEMENT_FLOOR_Y, t);
     }
-    const inThreshold = Math.abs(z - bounds.walkLaneCenterZ) <= 0.62 && x > bounds.stairEndX && x <= bounds.basementMinX + 0.18;
+    const inThreshold = Math.abs(z - bounds.walkLaneCenterZ) <= BASEMENT_STAIRS.laneHalfWidth && x > bounds.stairEndX && x <= bounds.basementMinX + 0.28;
     if (inThreshold) return BASEMENT_FLOOR_Y;
     const insideBasementRoom = x >= bounds.basementMinX && x <= bounds.basementMaxX && z >= bounds.basementMinZ && z <= bounds.basementMaxZ;
     if (insideBasementRoom && this.playerInBasement) {
@@ -1135,13 +1142,13 @@ class Game {
     const bounds = this.getBasementBounds();
     const regionMinX = bounds.stairStartX - 0.45;
     const regionMaxX = bounds.basementMinX + 0.22;
-    const regionMinZ = bounds.walkLaneCenterZ - 1.08;
-    const regionMaxZ = bounds.walkLaneCenterZ + 1.08;
+    const regionMinZ = bounds.walkLaneCenterZ - BASEMENT_STAIRS.architectureHalfWidth;
+    const regionMaxZ = bounds.walkLaneCenterZ + BASEMENT_STAIRS.architectureHalfWidth;
     if (x < regionMinX || x > regionMaxX || z < regionMinZ || z > regionMaxZ) return false;
 
-    const onTopLanding = x < bounds.stairStartX + 0.18 && Math.abs(z - bounds.walkLaneCenterZ) <= 0.62;
-    const onSlope = x >= bounds.stairStartX - 0.02 && x <= bounds.stairEndX + 0.12 && Math.abs(z - bounds.walkLaneCenterZ) <= 0.48;
-    const onLowerThreshold = x > bounds.stairEndX + 0.12 && x <= bounds.basementMinX + 0.18 && Math.abs(z - bounds.walkLaneCenterZ) <= 0.62;
+    const onTopLanding = x < bounds.stairStartX + 0.18 && Math.abs(z - bounds.walkLaneCenterZ) <= BASEMENT_STAIRS.laneHalfWidth;
+    const onSlope = x >= bounds.stairStartX - 0.02 && x <= bounds.stairEndX + 0.12 && Math.abs(z - bounds.walkLaneCenterZ) <= BASEMENT_STAIRS.laneHalfWidth;
+    const onLowerThreshold = x > bounds.stairEndX + 0.12 && x <= bounds.basementMinX + 0.28 && Math.abs(z - bounds.walkLaneCenterZ) <= BASEMENT_STAIRS.laneHalfWidth;
     const inBasementRoom = x >= bounds.basementMinX && x <= bounds.basementMaxX && z >= bounds.basementMinZ && z <= bounds.basementMaxZ;
 
     if (onTopLanding || onSlope || onLowerThreshold || inBasementRoom) return false;
@@ -1152,8 +1159,9 @@ class Game {
     const bounds = this.getBasementBounds();
     const onStairX = this.camera.position.x >= bounds.stairStartX - 0.18 && this.camera.position.x <= bounds.basementMinX + 0.04;
     if (!onStairX) return;
-    if (Math.abs(this.camera.position.z - bounds.walkLaneCenterZ) <= 0.82) {
-      this.camera.position.z = clamp(this.camera.position.z, bounds.walkLaneCenterZ - 0.3, bounds.walkLaneCenterZ + 0.3);
+    if (Math.abs(this.camera.position.z - bounds.walkLaneCenterZ) <= BASEMENT_STAIRS.architectureHalfWidth) {
+      const safeHalfWidth = BASEMENT_STAIRS.laneHalfWidth - PLAYER_RADIUS - 0.06;
+      this.camera.position.z = clamp(this.camera.position.z, bounds.walkLaneCenterZ - safeHalfWidth, bounds.walkLaneCenterZ + safeHalfWidth);
     }
   }
 
@@ -1165,17 +1173,16 @@ class Game {
     const railMaterial = new THREE.MeshStandardMaterial({ color: 0x21292d, roughness: 0.42, metalness: 0.62 });
     const stripeMaterial = new THREE.MeshStandardMaterial({ color: 0xd7bc56, roughness: 0.6, metalness: 0.08 });
 
-    const stairWidth = 1.78;
+    const stairWidth = BASEMENT_STAIRS.laneHalfWidth * 2 + PLAYER_RADIUS * 2 + 0.18;
     const sideWallThickness = 0.1;
     const topLandingDepth = 1.08;
     const bottomLandingDepth = 1.02;
-    const stepCount = 9;
-    const treadDepth = 0.31;
-    const stepThickness = 0.1;
-    const totalRun = stepCount * treadDepth;
-    const startX = -1.05;
+    const stepCount = BASEMENT_STAIRS.steps;
+    const treadDepth = BASEMENT_STAIRS.run / stepCount;
+    const stepThickness = 0.08;
+    const totalRun = BASEMENT_STAIRS.run;
+    const startX = BASEMENT_STAIRS.startOffsetX;
     const endX = startX + totalRun;
-    const stepDrop = Math.abs(BASEMENT_FLOOR_Y) / stepCount;
     const wallHeight = 1.04;
     const sideOffset = stairWidth * 0.5 + sideWallThickness * 0.5 + 0.04;
 
@@ -1186,7 +1193,8 @@ class Game {
 
     for (let i = 0; i < stepCount; i += 1) {
       const step = new THREE.Mesh(new THREE.BoxGeometry(treadDepth, stepThickness, stairWidth), concrete);
-      step.position.set(startX + i * treadDepth + treadDepth * 0.5, -(i + 0.5) * stepDrop, 0);
+      const surfaceY = -((i + 1) / stepCount) * Math.abs(BASEMENT_FLOOR_Y);
+      step.position.set(startX + i * treadDepth + treadDepth * 0.5, surfaceY - stepThickness * 0.5, 0);
       step.castShadow = true;
       step.receiveShadow = true;
       group.add(step);
@@ -1201,22 +1209,18 @@ class Game {
     bottomLanding.receiveShadow = true;
     group.add(bottomLanding);
 
-    const leftWall = new THREE.Mesh(new THREE.BoxGeometry(totalRun + topLandingDepth + bottomLandingDepth + 0.18, wallHeight, sideWallThickness), wallMaterial);
-    leftWall.position.set((startX + endX) * 0.5 + 0.04, 0.46, -sideOffset);
-    leftWall.castShadow = true;
-    leftWall.receiveShadow = true;
-    group.add(leftWall);
-
-    const rightWall = leftWall.clone();
-    rightWall.position.z = sideOffset;
-    group.add(rightWall);
-
-    const leftTrim = new THREE.Mesh(new THREE.BoxGeometry(totalRun + topLandingDepth + bottomLandingDepth + 0.16, 0.08, 0.05), trimMaterial);
-    leftTrim.position.set((startX + endX) * 0.5 + 0.04, 0.04, -sideOffset + 0.03);
-    group.add(leftTrim);
-    const rightTrim = leftTrim.clone();
-    rightTrim.position.z = sideOffset - 0.03;
-    group.add(rightTrim);
+    // Segmented side walls follow the descent instead of cutting through the
+    // camera at the lower landing. Their inside faces stay outside the player lane.
+    [-sideOffset, sideOffset].forEach((wallZ) => {
+      for (let i = 0; i < stepCount; i += 1) {
+        const surfaceY = -((i + 1) / stepCount) * Math.abs(BASEMENT_FLOOR_Y);
+        const wall = new THREE.Mesh(new THREE.BoxGeometry(treadDepth + 0.015, wallHeight, sideWallThickness), wallMaterial);
+        wall.position.set(startX + i * treadDepth + treadDepth * 0.5, surfaceY + wallHeight * 0.5, wallZ);
+        wall.castShadow = true;
+        wall.receiveShadow = true;
+        group.add(wall);
+      }
+    });
 
     [-0.62, 0.62].forEach((railZ) => {
       const postTop = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.88, 10), railMaterial);
@@ -1234,9 +1238,9 @@ class Game {
       group.add(rail);
     });
 
-    const beam = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.16, stairWidth + 0.16), trimMaterial);
-    beam.position.set(startX - 0.02, 0.04, 0);
-    group.add(beam);
+    const entryMark = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.018, stairWidth - 0.12), stripeMaterial);
+    entryMark.position.set(startX + 0.04, 0.012, 0);
+    group.add(entryMark);
 
     group.userData.antiBlockKeep = true;
     group.userData.layoutRole = 'stairs-down-walkable';
@@ -3097,7 +3101,7 @@ class Game {
       stamina: 100,
       noise: 0,
       clues: 0,
-      hasMap: true,
+      hasMap: false,
       flashlightOn: true,
       hidden: false,
       hideSpot: null,
@@ -3143,7 +3147,7 @@ class Game {
 
     this.playerInBasement = false;
     this.descentSequenceTimer = 0;
-    this.mapState.unlocked = true;
+    this.mapState.unlocked = false;
     this.mapState.discoveredCells = new Set();
     this.mapState.discoveredPois = new Set(['entrada']);
     ui.mapScreen.classList.remove('visible');
@@ -4034,6 +4038,7 @@ class Game {
   markPoiDiscovered(id) {
     if (!id || this.mapState.discoveredPois.has(id)) return;
     this.mapState.discoveredPois.add(id);
+    this.mapDirty = true;
     this.renderMap();
   }
 
@@ -4046,7 +4051,11 @@ class Game {
         const mapZ = cellZ + dz;
         if (mapX < 0 || mapZ < 0 || mapX >= MAP_W || mapZ >= MAP_H) continue;
         if (Math.hypot(dx, dz) > radius + 0.35) continue;
-        this.mapState.discoveredCells.add(`${mapX},${mapZ}`);
+        const key = `${mapX},${mapZ}`;
+        if (!this.mapState.discoveredCells.has(key)) {
+          this.mapState.discoveredCells.add(key);
+          this.mapDirty = true;
+        }
       }
     }
 
@@ -4131,26 +4140,36 @@ class Game {
     }
   }
 
-  renderMap() {
+  renderMap(force = false) {
     if (!ui.mapHint) return;
-    ui.mapHint.textContent = 'Exploração ativa · tecla M';
+    const playerCell = worldToCell(this.camera.position.x, this.camera.position.z);
+    const cellKey = `${playerCell.x},${playerCell.z}`;
+    if (!force && !this.mapDirty && this.lastRenderedMapCell === cellKey) return;
+    this.lastRenderedMapCell = cellKey;
+    this.mapDirty = false;
+    ui.mapHint.textContent = this.player.hasMap ? 'Exploração ativa · tecla M' : 'Pegue o mapa na recepção';
     this.refreshMapLegend();
     this.drawMapToCanvas(ui.minimap, false);
-    this.drawMapToCanvas(ui.mapCanvas, true);
+    if (this.mapOpen || force) this.drawMapToCanvas(ui.mapCanvas, true);
   }
 
   toggleMapScreen(forceState = null) {
     if (!this.started || this.ended) return;
+    if (!this.player.hasMap) {
+      this.showMessage('Você ainda precisa pegar o mapa na recepção.', 2.2);
+      return;
+    }
     const shouldOpen = forceState == null ? !this.mapOpen : forceState;
     if (shouldOpen) {
       if (ui.clueScreen.classList.contains('visible')) return;
       this.mapOpen = true;
+      this.mapDirty = true;
       this.modalOpen = true;
       this.paused = true;
       this.controls.unlock();
       ui.pauseScreen.classList.remove('visible');
       ui.mapScreen.classList.add('visible');
-      this.renderMap();
+      this.renderMap(true);
       return;
     }
 
@@ -4368,5 +4387,3 @@ function createWindowViewTexture(seed = 1, withEyes = false) {
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
 }
-
-

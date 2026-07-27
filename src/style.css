@@ -60,6 +60,29 @@ button:active {
   transform: translateY(0);
 }
 
+button:focus-visible,
+a:focus-visible,
+input:focus-visible {
+  outline: 3px solid #8ed8e8;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  #film-grain,
+  #danger-vignette {
+    display: none;
+  }
+}
+
 kbd {
   display: inline-grid;
   place-items: center;

@@ -42,6 +42,27 @@ button:hover {
   border-color: rgba(220, 238, 245, 0.55);
 }
 
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid #8ed8e8;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+
+  #p2-grain,
+  #p2-danger {
+    display: none;
+  }
+}
+
 kbd {
   display: inline-grid;
   place-items: center;
