@@ -542,7 +542,6 @@ class Game {
     this.descentSequenceTimer = 0;
     this.basementFogPlanes = [];
     this.mapState = {
-      unlocked: false,
       discoveredCells: new Set(),
       discoveredPois: new Set(['entrada'])
     };
@@ -566,7 +565,6 @@ class Game {
       stamina: 100,
       noise: 0,
       clues: 0,
-      hasMap: false,
       flashlightOn: true,
       hidden: false,
       hideSpot: null,
@@ -1841,82 +1839,6 @@ class Game {
     this.animatedObjects.push({ object: group, type: 'rotate', phase: index, baseY: group.position.y, amplitude: 0 });
   }
 
-  createMapPaperTexture() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 420;
-    canvas.height = 300;
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#e1d4ae';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = 'rgba(68, 62, 44, 0.9)';
-    ctx.lineWidth = 5;
-    ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
-    ctx.fillStyle = '#473b2a';
-    ctx.font = '700 28px Georgia';
-    ctx.fillText('PLANTA DA ESCOLA', 24, 42);
-    ctx.font = '18px Georgia';
-    ctx.fillText('Recepção • salas • saída norte', 24, 68);
-    ctx.strokeStyle = 'rgba(67, 78, 88, 0.75)';
-    ctx.lineWidth = 4;
-    ctx.strokeRect(36, 92, 348, 166);
-    ctx.strokeRect(64, 120, 70, 42);
-    ctx.strokeRect(164, 120, 94, 42);
-    ctx.strokeRect(288, 120, 68, 42);
-    ctx.beginPath();
-    ctx.moveTo(36, 182); ctx.lineTo(384, 182);
-    ctx.moveTo(142, 92); ctx.lineTo(142, 258);
-    ctx.moveTo(266, 92); ctx.lineTo(266, 258);
-    ctx.stroke();
-    ctx.fillStyle = '#5b6d7a';
-    ctx.fillRect(58, 195, 52, 22);
-    ctx.fillRect(302, 205, 56, 22);
-    ctx.fillStyle = '#6a3f3f';
-    ctx.fillRect(178, 205, 68, 22);
-    ctx.fillStyle = '#3f5d46';
-    ctx.fillRect(212, 94, 32, 16);
-    ctx.fillStyle = '#473b2a';
-    ctx.font = '16px Georgia';
-    ctx.fillText('ENTRADA', 58, 245);
-    ctx.fillText('SALA 13', 176, 245);
-    ctx.fillText('QUADRO', 296, 245);
-    ctx.fillText('SAÍDA', 205, 112);
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    return texture;
-  }
-
-  createEntranceMapTable() {
-    const table = this.createTable();
-    table.userData.antiBlockKeep = true;
-    table.userData.layoutRole = 'map-table';
-    const placed = this.placeAgainstWall(table, 2, 2, 'north', 0.76, 0.03, -0.18);
-    const mapPaper = new THREE.Mesh(
-      new THREE.PlaneGeometry(0.92, 0.66),
-      new THREE.MeshStandardMaterial({ map: this.createMapPaperTexture(), side: THREE.DoubleSide, roughness: 0.92 })
-    );
-    mapPaper.rotation.x = -Math.PI / 2;
-    mapPaper.position.set(0, 0.97, 0.08);
-    mapPaper.castShadow = true;
-    placed.add(mapPaper);
-
-    const note = new THREE.Mesh(
-      new THREE.BoxGeometry(0.18, 0.035, 0.18),
-      new THREE.MeshStandardMaterial({ color: 0x67523d, roughness: 0.88 })
-    );
-    note.position.set(-0.28, 0.96, -0.05);
-    note.rotation.y = 0.36;
-    placed.add(note);
-
-    const interaction = this.createInteractionVolume('schoolMap', 'Pegar mapa da escola', new THREE.Vector3(0, 1.08, 0), new THREE.Vector3(1.8, 1.35, 1.15));
-    interaction.userData.parentGroup = placed;
-    interaction.userData.mapPaper = mapPaper;
-    placed.add(interaction);
-    this.interactables.push(interaction);
-    this.raycastTargets.push(interaction);
-    this.mapPickup = interaction;
-    return placed;
-  }
-
   createLocker() {
     const group = new THREE.Group();
     const shell = new THREE.Mesh(new THREE.BoxGeometry(0.92, 2.45, 0.68), this.metalMaterial);
@@ -3086,7 +3008,6 @@ class Game {
       stamina: 100,
       noise: 0,
       clues: 0,
-      hasMap: false,
       flashlightOn: true,
       hidden: false,
       hideSpot: null,
@@ -3124,15 +3045,8 @@ class Game {
       item.userData.parentGroup.visible = true;
     });
 
-    if (this.mapPickup) {
-      this.mapPickup.userData.active = false;
-      if (this.mapPickup.userData.mapPaper) this.mapPickup.userData.mapPaper.visible = false;
-      if (this.mapPickup.userData.parentGroup) this.mapPickup.userData.parentGroup.visible = true;
-    }
-
     this.playerInBasement = false;
     this.descentSequenceTimer = 0;
-    this.mapState.unlocked = false;
     this.mapState.discoveredCells = new Set();
     this.mapState.discoveredPois = new Set(['entrada']);
     ui.mapScreen.classList.remove('visible');
@@ -3682,7 +3596,6 @@ class Game {
     this.nearInteractable = target;
     if (target?.userData.type === 'breaker') this.markPoiDiscovered('quadro');
     if (target?.userData.type === 'exit') this.markPoiDiscovered('saida');
-    if (target?.userData.type === 'schoolMap') this.markPoiDiscovered('mapa');
     if (target?.userData.type === 'clue') this.markPoiDiscovered(`pista-${target.userData.index + 1}`);
     if (target?.userData.type === 'door') {
       const label = target.userData.doorRef?.userData.targetOpen > 0.5 ? 'Fechar porta' : 'Abrir porta';
@@ -3709,9 +3622,6 @@ class Game {
         break;
       case 'battery':
         this.collectBattery(target);
-        break;
-      case 'schoolMap':
-        this.collectSchoolMap(target);
         break;
       case 'breaker':
         this.useBreaker();
@@ -3764,19 +3674,6 @@ class Game {
     ui.clueTitle.textContent = target.userData.data.title;
     ui.clueBody.textContent = target.userData.data.body;
     ui.clueScreen.classList.add('visible');
-    this.updateObjective();
-    this.renderMap();
-  }
-
-  collectSchoolMap(target) {
-    target.userData.active = false;
-    if (target.userData.mapPaper) target.userData.mapPaper.visible = false;
-    this.player.hasMap = true;
-    this.mapState.unlocked = true;
-    this.discoverMapAroundPlayer();
-    this.markPoiDiscovered('mapa');
-    this.audio.pickup();
-    this.showMessage('Você encontrou o mapa da escola. Pressione M para acompanhar a exploração.', 3.2);
     this.updateObjective();
     this.renderMap();
   }
@@ -4028,7 +3925,6 @@ class Game {
   }
 
   discoverMapAroundPlayer(radius = 2) {
-    if (!this.player.hasMap) return;
     const { x: cellX, z: cellZ } = worldToCell(this.camera.position.x, this.camera.position.z);
     for (let dz = -radius; dz <= radius; dz += 1) {
       for (let dx = -radius; dx <= radius; dx += 1) {
@@ -4105,24 +4001,22 @@ class Game {
       ctx.stroke();
     });
 
-    if (this.player.hasMap) {
-      const centerX = originX + playerCell.x * cellSize + cellSize * 0.5;
-      const centerY = originY + playerCell.z * cellSize + cellSize * 0.5;
-      const yaw = this.camera.rotation.y;
-      const size = Math.max(4, cellSize * 0.48);
-      ctx.save();
-      ctx.translate(centerX, centerY);
-      ctx.rotate(-yaw);
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.moveTo(0, -size);
-      ctx.lineTo(size * 0.72, size * 0.9);
-      ctx.lineTo(0, size * 0.45);
-      ctx.lineTo(-size * 0.72, size * 0.9);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
-    }
+    const centerX = originX + playerCell.x * cellSize + cellSize * 0.5;
+    const centerY = originY + playerCell.z * cellSize + cellSize * 0.5;
+    const yaw = this.camera.rotation.y;
+    const size = Math.max(4, cellSize * 0.48);
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(-yaw);
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(0, -size);
+    ctx.lineTo(size * 0.72, size * 0.9);
+    ctx.lineTo(0, size * 0.45);
+    ctx.lineTo(-size * 0.72, size * 0.9);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
   }
 
   renderMap(force = false) {
@@ -4132,7 +4026,7 @@ class Game {
     if (!force && !this.mapDirty && this.lastRenderedMapCell === cellKey) return;
     this.lastRenderedMapCell = cellKey;
     this.mapDirty = false;
-    ui.mapHint.textContent = this.player.hasMap ? 'Exploração ativa · tecla M' : 'Pegue o mapa na recepção';
+    ui.mapHint.textContent = 'Exploração ativa · tecla M';
     this.refreshMapLegend();
     this.drawMapToCanvas(ui.minimap, false);
     if (this.mapOpen || force) this.drawMapToCanvas(ui.mapCanvas, true);
@@ -4176,7 +4070,7 @@ class Game {
     ui.staminaValue.textContent = String(Math.round(stamina));
     ui.noiseBar.style.width = `${noise}%`;
     ui.noiseValue.textContent = String(Math.round(noise));
-    ui.status.textContent = `${this.debugMode ? 'DEBUG · SEM INIMIGOS · ' : ''}Pistas: ${this.player.clues}/${CLUES.length} · Reserva: ${this.player.batteryReserves} ${this.player.batteryReserves === 1 ? 'carga' : 'cargas'} · Lanterna ${this.player.flashlightOn ? 'ligada' : 'desligada'} · Mapa ${this.player.hasMap ? 'ativo' : 'indisponível'}${!this.debugMode && this.monster.seenLastFrame ? ' · ELE ESTÁ VENDO VOCÊ' : ''}`;
+    ui.status.textContent = `${this.debugMode ? 'DEBUG · SEM INIMIGOS · ' : ''}Pistas: ${this.player.clues}/${CLUES.length} · Reserva: ${this.player.batteryReserves} ${this.player.batteryReserves === 1 ? 'carga' : 'cargas'} · Lanterna ${this.player.flashlightOn ? 'ligada' : 'desligada'} · Mapa ativo${!this.debugMode && this.monster.seenLastFrame ? ' · ELE ESTÁ VENDO VOCÊ' : ''}`;
     const pursuitVisible = !this.debugMode && this.monster.pursuitActive && (this.monster.state === 'chase' || this.monster.state === 'investigate');
     const pursuitValue = this.monster.seenLastFrame ? 100 : clamp(this.monster.alert, 0, 100);
     ui.pursuit.classList.toggle('visible', pursuitVisible);
