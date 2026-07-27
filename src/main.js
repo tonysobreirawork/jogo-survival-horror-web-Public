@@ -542,7 +542,7 @@ class Game {
     this.descentSequenceTimer = 0;
     this.basementFogPlanes = [];
     this.mapState = {
-      unlocked: true,
+      unlocked: false,
       discoveredCells: new Set(),
       discoveredPois: new Set(['entrada'])
     };
@@ -566,7 +566,7 @@ class Game {
       stamina: 100,
       noise: 0,
       clues: 0,
-      hasMap: true,
+      hasMap: false,
       flashlightOn: true,
       hidden: false,
       hideSpot: null,
@@ -3086,7 +3086,7 @@ class Game {
       stamina: 100,
       noise: 0,
       clues: 0,
-      hasMap: true,
+      hasMap: false,
       flashlightOn: true,
       hidden: false,
       hideSpot: null,
@@ -3132,7 +3132,7 @@ class Game {
 
     this.playerInBasement = false;
     this.descentSequenceTimer = 0;
-    this.mapState.unlocked = true;
+    this.mapState.unlocked = false;
     this.mapState.discoveredCells = new Set();
     this.mapState.discoveredPois = new Set(['entrada']);
     ui.mapScreen.classList.remove('visible');
