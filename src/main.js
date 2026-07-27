@@ -4034,6 +4034,10 @@ class Game {
 
   toggleMapScreen(forceState = null) {
     if (!this.started || this.ended) return;
+    if (!this.player.hasMap) {
+      this.showMessage('Você ainda precisa pegar o mapa na recepção.', 2.2);
+      return;
+    }
     const shouldOpen = forceState == null ? !this.mapOpen : forceState;
     if (shouldOpen) {
       if (ui.clueScreen.classList.contains('visible')) return;
